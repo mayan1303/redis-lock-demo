@@ -1,29 +1,31 @@
 from flask import Flask
-import redis
-from redis_lock import RedisLock
+import threading
 import time
+import os
 
 app = Flask(__name__)
 
-redis_client = redis.Redis(host='localhost', port=6379, db=0)
-lock = RedisLock(redis_client)
+lock = threading.Lock()
+
+@app.route("/")
+def home():
+    return "Redis Lock Demo Running"
 
 @app.route("/process")
 def process():
-    lock_id = lock.acquire_lock("my_resource")
 
-    if not lock_id:
+    if not lock.acquire(blocking=False):
         return "Resource is locked by another process"
 
     print("Lock acquired")
+
     time.sleep(5)
 
-    lock.release_lock("my_resource", lock_id)
+    lock.release()
 
     return "Process completed and lock released"
 
-import os
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
